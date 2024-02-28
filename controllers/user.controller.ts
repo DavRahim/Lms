@@ -369,7 +369,7 @@ export const updateProfilePicture = CatchAsyncError(
       const { avatar } = req.body;
 
       const userId = req.user?._id;
-
+    // console.log(userId)
       const user = await userModel.findById(userId);
 
       if (avatar && user) {
