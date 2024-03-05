@@ -2,13 +2,14 @@ import { NextFunction, Request, Response, response } from "express";
 import { CatchAsyncError } from "../middleware/catchAsyncErrors";
 import ErrorHandler from "../utils/ErrorHandler";
 import cloudinary from "cloudinary";
-import { createCourse } from "../services/course.service";
+import { createCourse, getAllCoursesService } from "../services/course.service";
 import CourseModel from "../models/course.model";
 import { redis } from "../utils/redis";
 import mongoose from "mongoose";
 import ejs from "ejs";
 import path from "path";
 import sendMail from "../utils/sendMail";
+import NotificationModel from "../models/notification.modal";
 
 export const uploadCourse = CatchAsyncError(
   async (req: Request, res: Response, next: NextFunction) => {
@@ -189,6 +190,12 @@ export const addQuestion = CatchAsyncError(
 
       courseContent.questions.push(newQuestion);
 
+      await NotificationModel.create({
+        user: req.user?._id,
+        title: "New Question Received",
+        message: `You have a new Question in ${courseContent?.tittle}`,
+      });
+
       // save the update course;
 
       await course?.save();
@@ -248,6 +255,11 @@ export const addAnswer = CatchAsyncError(
 
       if (req.user?._id === question.user?._id) {
         // create notification
+        await NotificationModel.create({
+          user: req.user?._id,
+          title: "New Question Received",
+          message: `You have a new Question in ${courseContent?.tittle}`,
+        });
       } else {
         const data = {
           name: question.user.name,
@@ -364,7 +376,9 @@ export const addReplyToReview = CatchAsyncError(
         return next(new ErrorHandler("Course not found", 404));
       }
 
-      const review = course.reviews?.find((rev:any) => rev._id.toString() === reviewId);
+      const review = course.reviews?.find(
+        (rev: any) => rev._id.toString() === reviewId
+      );
 
       if (!review) {
         return next(new ErrorHandler("Review not found", 404));
@@ -374,17 +388,52 @@ export const addReplyToReview = CatchAsyncError(
         comment,
       };
 
-     if (review.commentReplies){
-       review.commentReplies = [];
-     };
-     
-     review.commentReplies?.push(replyData);
+      if (review.commentReplies) {
+        review.commentReplies = [];
+      }
+
+      review.commentReplies?.push(replyData);
 
       await course?.save();
 
       res.status(200).json({
         success: true,
         course,
+      });
+    } catch (error: any) {
+      return next(new ErrorHandler(error.message, 400));
+    }
+  }
+);
+
+// get all course --- only for admin
+export const getAllCoursess = CatchAsyncError(
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      getAllCoursesService(res);
+    } catch (error: any) {
+      return next(new ErrorHandler(error.message, 400));
+    }
+  }
+);
+
+// Deleted course ---> only for admin
+export const deletedCourse = CatchAsyncError(
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const { id } = req.params;
+      const course = await CourseModel.findById(id);
+      if (!course) {
+        return next(new ErrorHandler("Course not found", 404));
+      }
+
+      await course.deleteOne({ id });
+
+      await redis.del(id);
+
+      res.status(200).json({
+        success: true,
+        message: "course deleted successfully",
       });
     } catch (error: any) {
       return next(new ErrorHandler(error.message, 400));
