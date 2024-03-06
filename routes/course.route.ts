@@ -36,7 +36,7 @@ courseRouter.put("/add-answer", isAuthenticated, addAnswer);
 courseRouter.put("/add-review/:id", isAuthenticated, addReview);
 courseRouter.put("/add-reply/", isAuthenticated, authorizeRole("admin"), addReplyToReview);
 courseRouter.get(
-  "/get-courses/",
+  "/get-coursess/",
   isAuthenticated,
   authorizeRole("admin"),
   getAllCoursess
