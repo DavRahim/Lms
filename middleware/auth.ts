@@ -29,7 +29,7 @@ export const isAuthenticated = CatchAsyncError(
 
     // console.log(user, "user");
     if (!user) {
-      return next(new ErrorHandler("user not found", 400));
+      return next(new ErrorHandler("Please login to access this resource not found", 400));
     }
 
     req.user = JSON.parse(user);
